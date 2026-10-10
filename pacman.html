@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pac-Man Path Puzzle</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: #080b16;
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+}
+
+.game {
+    width: min(100%, 1000px);
+    text-align: center;
+}
+
+h1 {
+    color: #ffdf00;
+    letter-spacing: 3px;
+    text-shadow: 0 0 12px #ffdf0080;
+}
+
+.subtitle {
+    color: #b7c8e8;
+}
+
+/* ---------- Level selector ---------- */
+.levels {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 18px 0;
+}
+
+.level-btn {
+    padding: 12px 26px;
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    border: 2px solid #188cff;
+    border-radius: 10px;
+    background: #142545;
+    color: white;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.level-btn:hover {
+    background: #0759d8;
+}
+
+.level-btn.active[data-level="0"] {
+    background: #1faa4d;
+    border-color: #6dff9a;
+    box-shadow: 0 0 12px #1faa4d90;
+}
+
+.level-btn.active[data-level="1"] {
+    background: #d69a00;
+    border-color: #ffdf00;
+    box-shadow: 0 0 12px #d69a0090;
+}
+
+.level-btn.active[data-level="2"] {
+    background: #d12a45;
+    border-color: #ff6f88;
+    box-shadow: 0 0 12px #d12a4590;
+}
+
+/* ---------- Info bar ---------- */
+.info {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+    padding: 12px;
+    background: #101a30;
+    border: 1px solid #0759d8;
+    border-radius: 10px;
+    font-size: 18px;
+}
+
+.info span {
+    color: #78caff;
+}
+
+.info b {
+    color: #ffdf00;
+}
+
+/* ---------- Maze ---------- */
+.maze {
+    display: grid;
+    gap: 3px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 8px;
+    background: #030610;
+    border: 5px solid #087bff;
+    border-radius: 10px;
+    box-shadow: 0 0 25px #087bff40;
+}
+
+.cell {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;           /* nothing can ever stretch a cell */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0b1224;
+    border-radius: 3px;
+}
+
+.wall {
+    background: #0759d8;
+    border: 1px solid #329cff;
+    box-shadow: inset 0 0 8px #168aff;
+}
+
+.pellet::after {
+    content: "";
+    width: 18%;
+    height: 18%;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 0 6px white;
+}
+
+.pacman {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.target {
+    width: 80%;
+    height: 80%;
+    border: 3px solid #ff365b;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle,
+        #ff365b 0 25%,
+        white 28% 45%,
+        #ff365b 50%
+    );
+    box-shadow: 0 0 12px #ff365b;
+}
+
+/* Ghost: absolutely positioned SVG, so it can't change the layout */
+.ghost {
+    position: absolute;
+    inset: 8%;
+    z-index: 3;
+    pointer-events: none;
+    filter: drop-shadow(0 0 5px #ff365b);
+}
+
+.ghost svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* ---------- Controls ---------- */
+.controls {
+    display: grid;
+    grid-template-columns: repeat(3, 70px);
+    justify-content: center;
+    gap: 8px;
+    margin-top: 24px;
+}
+
+.controls button,
+.action {
+    border: 1px solid #188cff;
+    border-radius: 10px;
+    background: #142545;
+    color: white;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.controls button {
+    padding: 14px;
+    font-size: 26px;
+}
+
+.controls button:hover,
+.action:hover {
+    background: #0759d8;
+}
+
+.controls .empty {
+    visibility: hidden;
+}
+
+.action {
+    margin: 18px 4px;
+    padding: 14px 22px;
+    font-size: 15px;
+}
+
+#message {
+    min-height: 28px;
+    color: #ffdf00;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.hint {
+    color: #9eacc7;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+@media (max-width: 600px) {
+    body {
+        padding: 8px;
+    }
+
+    h1 {
+        font-size: 23px;
+    }
+
+    .level-btn {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+
+    .maze {
+        gap: 1px;
+        padding: 4px;
+        border-width: 3px;
+    }
+
+    .controls {
+        grid-template-columns: repeat(3, 60px);
+    }
+}
+</style>
+</head>
+
+<body>
+<main class="game">
+
+    <h1>PAC-MAN PATH</h1>
+    <p class="subtitle">Collect pellets, avoid the ghost, and reach the target!</p>
+
+    <div class="levels">
+        <button class="level-btn" data-level="0">EASY</button>
+        <button class="level-btn" data-level="1">MEDIUM</button>
+        <button class="level-btn" data-level="2">HARD</button>
+    </div>
+
+    <div class="info">
+        <span>Level: <b id="levelName">Easy</b></span>
+        <span>Moves: <b id="moves">0</b></span>
+        <span>Pellets: <b id="pellets">0</b></span>
+    </div>
+
+    <div class="maze" id="maze"></div>
+
+    <div class="controls">
+        <button class="empty" aria-hidden="true" tabindex="-1"> </button>
+        <button data-dir="up" aria-label="Move up">⬆️</button>
+        <button class="empty" aria-hidden="true" tabindex="-1"> </button>
+
+        <button data-dir="left" aria-label="Move left">⬅️</button>
+        <button data-dir="down" aria-label="Move down">⬇️</button>
+        <button data-dir="right" aria-label="Move right">➡️</button>
+    </div>
+
+    <button class="action" id="restart">Restart Level</button>
+    <button class="action" id="hint">Show Hint</button>
+
+    <p id="message">Find a path to the red target, and watch out for the ghost!</p>
+    <p class="hint">
+        Use the arrow keys or WASD to move.
+        Collect pellets and reach the target without getting caught.
+        Reaching the target moves you to the next level automatically.
+    </p>
+
+</main>
+
+<script>
+/*
+  Legend:
+  # = wall
+  . = path (with pellet)
+  S = Pac-Man start
+  T = target
+  G = ghost start
+*/
+const levels = [
+    {
+        name: "Easy",
+        ghostSpeed: 800,   // ms per ghost move (higher = slower)
+        layout: [
+            "###########",
+            "#S..#....G#",
+            "#.#.#.###.#",
+            "#.#...#...#",
+            "#.#####.#.#",
+            "#.......#.#",
+            "#.#####.#.#",
+            "#.....#..T#",
+            "###########"
+        ]
+    },
+    {
+        name: "Medium",
+        ghostSpeed: 450,
+        layout: [
+            "###############",
+            "#S....#......G#",
+            "#.#.#.#.#####.#",
+            "#.#.#...#.....#",
+            "#.#.#####.###.#",
+            "#...#.....#...#",
+            "###.#.###.#.#.#",
+            "#...#...#...#.#",
+            "#.#####.#.###.#",
+            "#............T#",
+            "###############"
+        ]
+    },
+    {
+        name: "Hard",
+        ghostSpeed: 380,
+        layout: [
+            "#####################",
+            "#S....#.....#......G#",
+            "#####.#.###.#.#####.#",
+            "#.....#.#...#.....#.#",
+            "#.#.###.#.###.#.#####",
+            "#.......#.#...#.....#",
+            "#####.###.#.#######.#",
+            "#.........#.#.......#",
+            "#.#########.#.#######",
+            "#.....#.....#.......#",
+            "#####.#.###########.#",
+            "#.....#.....#.......#",
+            "#.#####.###.#.#######",
+            "#.......#...#......T#",
+            "#####################"
+        ]
+    }
+];
+
+// How long to show the "level complete" message before moving on (ms)
+const AUTO_ADVANCE_DELAY = 1800;
+
+const GHOST_SVG = `
+<svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M3 22V11a9 9 0 0 1 18 0v11l-3-2.5-3 2.5-3-2.5-3 2.5-3-2.5z" fill="#ff365b"/>
+    <circle cx="9" cy="11" r="2.6" fill="#fff"/>
+    <circle cx="15" cy="11" r="2.6" fill="#fff"/>
+    <circle cx="9.8" cy="11.4" r="1.2" fill="#1a2a8a"/>
+    <circle cx="15.8" cy="11.4" r="1.2" fill="#1a2a8a"/>
+</svg>`;
+
+const maze = document.getElementById("maze");
+const movesLabel = document.getElementById("moves");
+const pelletsLabel = document.getElementById("pellets");
+const levelLabel = document.getElementById("levelName");
+const message = document.getElementById("message");
+
+let currentLevel = 0;
+let layout;
+let start;
+let target;
+let enemyStart;
+let totalPellets;
+
+let player;
+let enemy;
+let moves;
+let pellets;
+let collected;
+let won;
+let caught;
+let hintPath;
+let advanceTimer = null;
+let enemyTimer = null;
+
+// Built once per level, then only updated (no more rebuilding every tick)
+let cells = [];
+let pacmanEl;
+let ghostEl;
+
+function positionKey(x, y) {
+    return `${x},${y}`;
+}
+
+function isWall(x, y) {
+    return (
+        y < 0 ||
+        y >= layout.length ||
+        x < 0 ||
+        x >= layout[y].length ||
+        layout[y][x] === "#"
+    );
+}
+
+function clearAdvanceTimer() {
+    if (advanceTimer !== null) {
+        clearTimeout(advanceTimer);
+        advanceTimer = null;
+    }
+}
+
+function startEnemyTimer() {
+    if (enemyTimer !== null) {
+        clearInterval(enemyTimer);
+    }
+
+    enemyTimer = setInterval(moveEnemy, levels[currentLevel].ghostSpeed);
+}
+
+/* Build the grid one time for the current level */
+function buildMaze() {
+    const cols = layout[0].length;
+    const rows = layout.length;
+
+    maze.innerHTML = "";
+    cells = [];
+
+    // Fixed rows AND columns so no content can resize them
+    maze.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+    maze.style.gridTemplateRows = `repeat(${rows}, minmax(0, 1fr))`;
+    maze.style.aspectRatio = `${cols} / ${rows}`;
+    maze.style.maxWidth = `${cols * 70}px`;
+
+    layout.forEach((row, y) => {
+        cells[y] = [];
+
+        [...row].forEach((symbol, x) => {
+            const cell = document.createElement("div");
+            cell.className = "cell";
+
+            if (symbol === "#") {
+                cell.classList.add("wall");
+            }
+
+            if (x === target.x && y === target.y) {
+                const goal = document.createElement("div");
+                goal.className = "target";
+                goal.setAttribute("aria-label", "Target");
+                cell.appendChild(goal);
+            }
+
+            maze.appendChild(cell);
+            cells[y][x] = cell;
+        });
+    });
+
+    pacmanEl = document.createElement("img");
+    pacmanEl.className = "pacman";
+    pacmanEl.src = "pacman.gif";
+    pacmanEl.alt = "Pac-Man";
+
+    ghostEl = document.createElement("div");
+    ghostEl.className = "ghost";
+    ghostEl.setAttribute("aria-label", "Enemy");
+    ghostEl.innerHTML = GHOST_SVG;
+}
+
+function loadLevel(index) {
+    clearAdvanceTimer();
+
+    currentLevel = index;
+    layout = levels[index].layout;
+
+    totalPellets = 0;
+
+    layout.forEach((row, y) => {
+        [...row].forEach((symbol, x) => {
+            if (symbol === "S") start = { x, y };
+            if (symbol === "T") target = { x, y };
+            if (symbol === "G") enemyStart = { x, y };
+            if (symbol === ".") totalPellets++;
+        });
+    });
+
+    levelLabel.textContent = levels[index].name;
+
+    document.querySelectorAll(".level-btn").forEach(btn => {
+        btn.classList.toggle(
+            "active",
+            Number(btn.dataset.level) === index
+        );
+    });
+
+    buildMaze();
+    restart();
+    startEnemyTimer();
+}
+
+/* Update only what changes: pellets, hint path, Pac-Man, ghost */
+function render() {
+    layout.forEach((row, y) => {
+        [...row].forEach((symbol, x) => {
+            const cell = cells[y][x];
+            const key = positionKey(x, y);
+
+            cell.classList.toggle(
+                "pellet",
+                symbol === "." && !collected.has(key)
+            );
+
+            cell.style.background =
+                hintPath.some(p => p.x === x && p.y === y)
+                    ? "#245b43"
+                    : "";
+        });
+    });
+
+    // Pac-Man (only re-parent if he actually changed cells)
+    const pacCell = cells[player.y][player.x];
+
+    if (pacmanEl.parentElement !== pacCell) {
+        pacCell.appendChild(pacmanEl);
+    }
+
+    pacmanEl.style.transform = `rotate(${player.angle}deg)`;
+
+    // Ghost (hidden once it has caught Pac-Man)
+    if (caught) {
+        ghostEl.remove();
+    } else {
+        const ghostCell = cells[enemy.y][enemy.x];
+
+        if (ghostEl.parentElement !== ghostCell) {
+            ghostCell.appendChild(ghostEl);
+        }
+    }
+
+    movesLabel.textContent = moves;
+    pelletsLabel.textContent = `${pellets} / ${totalPellets}`;
+}
+
+function finishGame(messageText) {
+    caught = true;
+    message.textContent = messageText;
+    render();
+}
+
+function levelComplete() {
+    won = true;
+
+    if (currentLevel < levels.length - 1) {
+        const nextName = levels[currentLevel + 1].name;
+
+        message.textContent =
+            `LEVEL COMPLETE! ${moves} moves, ${pellets}/${totalPellets} pellets. ` +
+            `Next: ${nextName}...`;
+
+        // Automatically go to the next (harder) level
+        advanceTimer = setTimeout(() => {
+            loadLevel(currentLevel + 1);
+        }, AUTO_ADVANCE_DELAY);
+    } else {
+        message.textContent =
+            `YOU BEAT ALL LEVELS! ${moves} moves, ${pellets}/${totalPellets} pellets. ` +
+            `Returning to Easy...`;
+
+        // After the final level, loop back to the start
+        advanceTimer = setTimeout(() => {
+            loadLevel(0);
+        }, AUTO_ADVANCE_DELAY * 2);
+    }
+
+    render();
+}
+
+function move(dx, dy) {
+    if (won || caught) return;
+
+    const x = player.x + dx;
+    const y = player.y + dy;
+
+    if (isWall(x, y)) {
+        message.textContent = "A wall blocks your way!";
+        return;
+    }
+
+    // Walking into the ghost = caught
+    if (x === enemy.x && y === enemy.y) {
+        finishGame("GAME OVER! The ghost caught you! Press Restart Level.");
+        return;
+    }
+
+    // Rotate the character in its new direction.
+    if (dx === 1) player.angle = 0;
+    if (dx === -1) player.angle = 180;
+    if (dy === -1) player.angle = 270;
+    if (dy === 1) player.angle = 90;
+
+    player.x = x;
+    player.y = y;
+    moves++;
+
+    hintPath = [];
+
+    const key = positionKey(x, y);
+
+    if (layout[y][x] === "." && !collected.has(key)) {
+        collected.add(key);
+        pellets++;
+    }
+
+    if (x === target.x && y === target.y) {
+        levelComplete();
+        return;
+    }
+
+    message.textContent = "Keep going! Avoid the ghost!";
+    render();
+}
+
+// Shortest path (BFS) from a starting point to a goal point.
+function bfs(from, to) {
+    const queue = [{
+        x: from.x,
+        y: from.y,
+        path: []
+    }];
+
+    const visited = new Set([positionKey(from.x, from.y)]);
+
+    const directions = [
+        { x: 0, y: -1 },
+        { x: 0, y: 1 },
+        { x: -1, y: 0 },
+        { x: 1, y: 0 }
+    ];
+
+    while (queue.length > 0) {
+        const current = queue.shift();
+
+        if (current.x === to.x && current.y === to.y) {
+            return current.path;
+        }
+
+        for (const d of directions) {
+            const x = current.x + d.x;
+            const y = current.y + d.y;
+            const key = positionKey(x, y);
+
+            if (!isWall(x, y) && !visited.has(key)) {
+                visited.add(key);
+
+                queue.push({
+                    x,
+                    y,
+                    path: [...current.path, { x, y }]
+                });
+            }
+        }
+    }
+
+    return [];
+}
+
+// Hint: route from Pac-Man to the target
+function findPath() {
+    return bfs(player, target);
+}
+
+// Ghost AI: recomputes the shortest path to Pac-Man every move
+function moveEnemy() {
+    if (won || caught) return;
+
+    const path = bfs(enemy, player);
+
+    if (path.length > 0) {
+        enemy.x = path[0].x;
+        enemy.y = path[0].y;
+    }
+
+    if (enemy.x === player.x && enemy.y === player.y) {
+        finishGame("GAME OVER! The ghost caught you! Press Restart Level.");
+        return;
+    }
+
+    render();
+}
+
+function restart() {
+    clearAdvanceTimer();
+
+    player = {
+        ...start,
+        angle: 0
+    };
+
+    enemy = { ...enemyStart };
+    moves = 0;
+    pellets = 0;
+    collected = new Set();
+    won = false;
+    caught = false;
+    hintPath = [];
+
+    message.textContent = "Find a path to the red target, and watch out for the ghost!";
+
+    render();
+}
+
+document.addEventListener("keydown", event => {
+    const directions = {
+        ArrowUp: [0, -1],
+        w: [0, -1],
+        W: [0, -1],
+        ArrowDown: [0, 1],
+        s: [0, 1],
+        S: [0, 1],
+        ArrowLeft: [-1, 0],
+        a: [-1, 0],
+        A: [-1, 0],
+        ArrowRight: [1, 0],
+        d: [1, 0],
+        D: [1, 0]
+    };
+
+    const direction = directions[event.key];
+
+    if (direction) {
+        event.preventDefault();
+        move(direction[0], direction[1]);
+    }
+});
+
+document.querySelectorAll("[data-dir]").forEach(button => {
+    button.addEventListener("click", () => {
+        const directions = {
+            up: [0, -1],
+            down: [0, 1],
+            left: [-1, 0],
+            right: [1, 0]
+        };
+
+        const direction = directions[button.dataset.dir];
+        move(direction[0], direction[1]);
+    });
+});
+
+document.querySelectorAll(".level-btn").forEach(button => {
+    button.addEventListener("click", () => {
+        loadLevel(Number(button.dataset.level));
+        button.blur();
+    });
+});
+
+document.getElementById("restart").addEventListener("click", restart);
+
+document.getElementById("hint").addEventListener("click", () => {
+    if (won || caught) return;
+
+    hintPath = findPath();
+
+    message.textContent = hintPath.length
+        ? "Follow the green path to the target, but watch out for the ghost!"
+        : "No path found!";
+
+    render();
+});
+
+loadLevel(0);
+</script>
+</body>
+</html>
